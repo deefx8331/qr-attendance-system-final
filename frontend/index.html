@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Attendance System – Bayero University Kano</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        :root { --primary:#1a5f2a; --dark:#0d3015; }
+        body  { font-family:'Segoe UI',sans-serif; background:#f5f7fa; min-height:100vh; }
+
+        /* ── Navbar ── */
+        .navbar { background:linear-gradient(135deg,var(--primary),var(--dark)); box-shadow:0 2px 15px rgba(0,0,0,.12); }
+        .navbar-brand { font-weight:700; font-size:1.35rem; }
+
+        /* ── Sidebar ── */
+        .sidebar { position:fixed; top:70px; left:0; width:260px; height:calc(100vh - 70px); background:#fff;
+            box-shadow:2px 0 10px rgba(0,0,0,.06); padding:20px 0; overflow-y:auto; z-index:100; transition:transform .3s; }
+        .sidebar-link { display:flex; align-items:center; padding:12px 25px; color:#555; text-decoration:none;
+            transition:all .3s; border-left:3px solid transparent; }
+        .sidebar-link:hover,.sidebar-link.active { background:#f0f7f1; color:var(--primary); border-left-color:var(--primary); }
+        .sidebar-link i { width:25px; margin-right:12px; font-size:1.1rem; }
+        .sidebar-divider  { height:1px; background:#eee; margin:15px 20px; }
+        .sidebar-header   { padding:10px 25px; font-size:.72rem; font-weight:600; color:#999; text-transform:uppercase; letter-spacing:1px; }
+
+        /* ── Main ── */
+        .main-content { margin-left:260px; padding:30px; min-height:calc(100vh - 70px); margin-top:70px; }
+
+        /* ── Stat cards ── */
+        .stat-card { background:#fff; border-radius:15px; padding:25px; box-shadow:0 5px 20px rgba(0,0,0,.06); transition:transform .3s; }
+        .stat-card:hover { transform:translateY(-4px); }
+        .stat-card .icon { width:60px; height:60px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:#fff; }
+        .stat-card .icon.bg-primary { background:linear-gradient(135deg,#667eea,#764ba2); }
+        .stat-card .icon.bg-success { background:linear-gradient(135deg,#11998e,#38ef7d); }
+        .stat-card .icon.bg-warning { background:linear-gradient(135deg,#f093fb,#f5576c); }
+        .stat-card .icon.bg-info    { background:linear-gradient(135deg,#4facfe,#00f2fe); }
+        .stat-card .icon.bg-danger  { background:linear-gradient(135deg,#f7971e,#ffd200); }
+        .stat-card h3 { font-size:2rem; font-weight:700; margin:15px 0 5px; }
+        .stat-card p  { color:#888; margin:0; font-size:.9rem; }
+
+        /* ── Page cards ── */
+        .page-card { background:#fff; border-radius:15px; box-shadow:0 5px 20px rgba(0,0,0,.06); margin-bottom:25px; }
+        .page-card-header { padding:20px 25px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center; }
+        .page-card-header h5 { margin:0; font-weight:600; }
+        .page-card-body { padding:25px; }
+
+        /* ── Buttons ── */
+        .btn-primary { background:var(--primary); border-color:var(--primary); }
+        .btn-primary:hover { background:var(--dark); border-color:var(--dark); }
+
+        /* ── QR rotating display ── */
+        .qr-wrapper { position:relative; display:inline-block; }
+        .qr-img { max-width:300px; border:5px solid var(--primary); border-radius:15px; padding:12px;
+            background:#fff; transition:opacity .25s ease; display:block; margin:0 auto; }
+        .rotating-badge { margin-top:8px; display:inline-block; background:linear-gradient(135deg,#1a5f2a,#38ef7d);
+            color:#fff; border-radius:20px; padding:5px 14px; font-size:.78rem; font-weight:600; letter-spacing:.3px; }
+        .qr-display { text-align:center; padding:25px; }
+        .qr-timer { font-size:2rem; font-weight:700; color:var(--primary); margin:15px 0; }
+        .qr-timer.expired { color:#dc3545; }
+
+        /* ── Scanner ── */
+        #qr-reader { width:100%; max-width:400px; margin:0 auto; }
+
+        /* ── GPS toggle ── */
+        .gps-panel { border:2px solid #28a745; border-radius:12px; padding:18px; background:#f0fff4; }
+        .gps-panel .form-label { font-weight:600; }
+
+        /* ── Table ── */
+        .table-container { overflow-x:auto; }
+        .table thead th { background:#f8f9fa; border-bottom:2px solid #dee2e6; font-weight:600;
+            text-transform:uppercase; font-size:.78rem; letter-spacing:.5px; }
+
+        /* ── Auth pages ── */
+        .auth-container { min-height:100vh; display:flex; align-items:center; justify-content:center;
+            background:linear-gradient(135deg,var(--primary),var(--dark)); padding:20px; }
+        .auth-card { background:#fff; border-radius:20px; box-shadow:0 20px 60px rgba(0,0,0,.3); overflow:hidden; max-width:450px; width:100%; }
+        .auth-header { background:linear-gradient(135deg,var(--primary),var(--dark)); color:#fff; padding:38px 30px; text-align:center; }
+        .auth-header h4 { margin:0; font-weight:600; }
+        .auth-header p  { margin:10px 0 0; opacity:.8; font-size:.9rem; }
+        .auth-body { padding:38px 30px; }
+        .auth-body .form-control { border-radius:10px; padding:12px 15px; border:2px solid #eee; }
+        .auth-body .form-control:focus { border-color:var(--primary); box-shadow:none; }
+        .auth-body .btn-primary { border-radius:10px; padding:12px; font-weight:600; }
+
+        /* ── Badges ── */
+        .badge-status { padding:6px 12px; border-radius:20px; font-weight:500; font-size:.78rem; }
+        .badge-present { background:#d4edda; color:#155724; }
+        .badge-absent  { background:#f8d7da; color:#721c24; }
+
+        /* ── Alert ── */
+        .custom-alert { position:fixed; top:90px; right:20px; z-index:9999; min-width:300px;
+            animation:slideIn .3s ease; max-width:400px; }
+        @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+
+        /* ── Upload zone ── */
+        .upload-zone { border:2px dashed #ccc; border-radius:12px; padding:28px; text-align:center; cursor:pointer; transition:all .3s; }
+        .upload-zone:hover { border-color:var(--primary); background:#f0f7f1; }
+        .upload-zone i { font-size:2.5rem; color:#ccc; margin-bottom:10px; }
+        .credential-box { background:#f8f9fa; border:1px solid #dee2e6; border-radius:10px; padding:14px; font-family:monospace; }
+
+        /* ── Responsive ── */
+        @media (max-width:991px) { .sidebar{transform:translateX(-100%)} .sidebar.show{transform:translateX(0)} .main-content{margin-left:0} }
+        .page { display:none; } .page.active { display:block; }
+
+        /* ── Print ── */
+        @media print {
+            .sidebar,.navbar,.no-print{display:none!important}
+            .main-content{margin-left:0!important;margin-top:0!important}
+            .rotating-badge{display:none!important}
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══════════ LOGIN ══════════ -->
+<div id="loginPage" class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <i class="fas fa-university fa-3x mb-3"></i>
+            <h4>QR Attendance System</h4>
+            <p>Bayero University, Kano</p>
+        </div>
+        <div class="auth-body">
+            <form id="loginForm">
+                <div class="mb-3"><label class="form-label">Email Address</label>
+                    <input type="email" class="form-control" id="loginEmail" required></div>
+                <div class="mb-3"><label class="form-label">Password</label>
+                    <input type="password" class="form-control" id="loginPassword" required></div>
+                <button type="submit" class="btn btn-primary w-100 mb-3">
+                    <i class="fas fa-sign-in-alt me-2"></i>Login</button>
+                <p class="text-center mb-0 text-muted" style="font-size:.84rem;">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Students: <a href="#" onclick="showRegister()" class="text-decoration-none">Create Account</a>
+                    &nbsp;|&nbsp; Lecturers: use admin-provided credentials
+                </p>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════ STUDENT REGISTER ══════════ -->
+<div id="registerPage" class="auth-container" style="display:none;">
+    <div class="auth-card">
+        <div class="auth-header">
+            <i class="fas fa-user-graduate fa-3x mb-3"></i>
+            <h4>Student Registration</h4>
+            <p>Create your student account</p>
+        </div>
+        <div class="auth-body">
+            <form id="registerForm">
+                <div class="mb-3"><label class="form-label">Full Name</label>
+                    <input type="text" class="form-control" id="regFullName" required></div>
+                <div class="mb-3"><label class="form-label">Email Address</label>
+                    <input type="email" class="form-control" id="regEmail" required></div>
+                <div class="mb-3"><label class="form-label">Password</label>
+                    <input type="password" class="form-control" id="regPassword" required minlength="6"></div>
+                <div class="mb-3"><label class="form-label">Registration Number</label>
+                    <input type="text" class="form-control" id="regNumber" required placeholder="e.g., BUK/CS/20/1001">
+                    <div class="form-text">Must match the reg number your lecturer uses to enrol you.</div></div>
+                <div class="row">
+                    <div class="col-6 mb-3"><label class="form-label">Level</label>
+                        <select class="form-select" id="regLevel">
+                            <option value="100">100 Level</option><option value="200">200 Level</option>
+                            <option value="300">300 Level</option><option value="400" selected>400 Level</option>
+                            <option value="500">500 Level</option>
+                        </select></div>
+                    <div class="col-6 mb-3"><label class="form-label">Faculty</label>
+                        <input type="text" class="form-control" id="regFaculty" placeholder="e.g., Computing"></div>
+                </div>
+                <div class="mb-3"><label class="form-label">Department</label>
+                    <input type="text" class="form-control" id="regDepartment" placeholder="e.g., Computer Science"></div>
+                <button type="submit" class="btn btn-primary w-100 mb-3">
+                    <i class="fas fa-user-plus me-2"></i>Register</button>
+                <p class="text-center mb-0">Already have an account?
+                    <a href="#" onclick="showLogin()" class="text-decoration-none">Login</a></p>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════ MAIN APP ══════════ -->
+<div id="mainApp" style="display:none;">
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container-fluid">
+            <button class="btn btn-link text-white d-lg-none me-2" onclick="toggleSidebar()">
+                <i class="fas fa-bars fa-lg"></i></button>
+            <a class="navbar-brand" href="#"><i class="fas fa-qrcode me-2"></i>BUK QR Attendance</a>
+            <div class="ms-auto d-flex align-items-center">
+                <span class="text-white me-3 d-none d-md-inline">
+                    <i class="fas fa-user-circle me-1"></i>
+                    <span id="navUserName"></span>
+                    <span class="badge bg-secondary ms-1" id="navUserRole"></span>
+                </span>
+                <button class="btn btn-outline-light btn-sm" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">Main Menu</div>
+        <a href="#" class="sidebar-link active" onclick="showPage('dashboard')">
+            <i class="fas fa-tachometer-alt"></i>Dashboard</a>
+
+        <div id="studentMenu" style="display:none;">
+            <a href="#" class="sidebar-link" onclick="showPage('scanQR')"><i class="fas fa-qrcode"></i>Scan Attendance</a>
+            <a href="#" class="sidebar-link" onclick="showPage('myAttendance')"><i class="fas fa-clipboard-check"></i>My Attendance</a>
+            <a href="#" class="sidebar-link" onclick="showPage('myCourses')"><i class="fas fa-book"></i>My Courses</a>
+        </div>
+
+        <div id="lecturerMenu" style="display:none;">
+            <a href="#" class="sidebar-link" onclick="showPage('manageCourses')"><i class="fas fa-book"></i>My Courses</a>
+            <a href="#" class="sidebar-link" onclick="showPage('generateQR')"><i class="fas fa-qrcode"></i>Generate QR Code</a>
+            <a href="#" class="sidebar-link" onclick="showPage('viewAttendance')"><i class="fas fa-users"></i>View Attendance</a>
+            <a href="#" class="sidebar-link" onclick="showPage('reports')"><i class="fas fa-chart-bar"></i>Reports</a>
+        </div>
+
+        <div id="adminMenu" style="display:none;">
+            <div class="sidebar-divider"></div>
+            <div class="sidebar-header">Administration</div>
+            <a href="#" class="sidebar-link" onclick="showPage('manageUsers')"><i class="fas fa-users-cog"></i>Manage Users</a>
+            <a href="#" class="sidebar-link" onclick="showPage('manageLecturers')"><i class="fas fa-chalkboard-teacher"></i>Manage Lecturers</a>
+            <a href="#" class="sidebar-link" onclick="showPage('allCourses')"><i class="fas fa-book-open"></i>Manage Courses</a>
+        </div>
+
+        <div class="sidebar-divider"></div>
+        <a href="#" class="sidebar-link" onclick="showPage('profile')"><i class="fas fa-user-cog"></i>Profile</a>
+    </div>
+
+    <!-- ══ PAGES ══ -->
+    <div class="main-content">
+
+        <!-- Dashboard -->
+        <div id="dashboardPage" class="page active">
+            <h4 class="mb-4">Dashboard</h4>
+            <div class="row mb-4" id="statsCards"></div>
+            <div class="page-card">
+                <div class="page-card-header"><h5><i class="fas fa-history me-2"></i>Recent Activity</h5></div>
+                <div class="page-card-body" id="recentActivity"><p class="text-muted">Loading…</p></div>
+            </div>
+        </div>
+
+        <!-- Student: Scan QR -->
+        <div id="scanQRPage" class="page">
+            <h4 class="mb-4">Scan Attendance QR Code</h4>
+            <div class="page-card">
+                <div class="page-card-body text-center">
+                    <div class="alert alert-info d-inline-flex align-items-center gap-2 mb-3">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Your GPS location may be requested automatically if the lecturer enabled location lock.</span>
+                    </div>
+                    <div id="qr-reader"></div>
+                    <div id="scanResult" class="mt-4" style="display:none;">
+                        <div class="alert" id="scanAlert"></div>
+                    </div>
+                    <button class="btn btn-primary mt-3" onclick="startScanner()">
+                        <i class="fas fa-camera me-2"></i>Start Scanner</button>
+                    <button class="btn btn-secondary mt-3" onclick="stopScanner()" style="display:none;" id="stopScanBtn">
+                        <i class="fas fa-stop me-2"></i>Stop Scanner</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student: My Attendance -->
+        <div id="myAttendancePage" class="page">
+            <h4 class="mb-4">My Attendance History</h4>
+            <div class="page-card"><div class="page-card-body">
+                <div class="table-container">
+                    <table class="table table-hover">
+                        <thead><tr><th>Course</th><th>Session</th><th>Date &amp; Time</th><th>Status</th></tr></thead>
+                        <tbody id="attendanceHistoryTable"><tr><td colspan="4" class="text-center">Loading…</td></tr></tbody>
+                    </table>
+                </div>
+            </div></div>
+        </div>
+
+        <!-- Student: My Courses -->
+        <div id="myCoursesPage" class="page">
+            <h4 class="mb-4">My Enrolled Courses</h4>
+            <div class="alert alert-info d-flex align-items-center gap-2 mb-4">
+                <i class="fas fa-info-circle"></i>
+                <span>Course enrolment is managed by your lecturers via Excel upload. Contact your lecturer if you're missing from a course.</span>
+            </div>
+            <div class="row" id="enrolledCoursesList">
+                <div class="col-12 text-center"><p class="text-muted">Loading…</p></div>
+            </div>
+        </div>
+
+        <!-- Lecturer: My Courses -->
+        <div id="manageCoursesPage" class="page">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="mb-0">My Courses</h4>
+            </div>
+            <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
+                <i class="fas fa-info-circle"></i>
+                <span>Courses are assigned by Admin. Use <strong>Upload Students</strong> to enrol students from Excel.</span>
+            </div>
+            <div class="row" id="lecturerCoursesList">
+                <div class="col-12 text-center"><p class="text-muted">Loading…</p></div>
+            </div>
+        </div>
+
+        <!-- Lecturer: Generate QR ── with GPS lock + rotating QR ── -->
+        <div id="generateQRPage" class="page">
+            <h4 class="mb-4">Generate Attendance QR Code</h4>
+            <div class="row">
+                <div class="col-lg-5">
+                    <div class="page-card">
+                        <div class="page-card-header"><h5><i class="fas fa-cog me-2"></i>Session Settings</h5></div>
+                        <div class="page-card-body">
+                            <form id="generateQRForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Select Course</label>
+                                    <select class="form-select" id="qrCourseSelect" required>
+                                        <option value="">-- Select Course --</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Session Title</label>
+                                    <input type="text" class="form-control" id="sessionTitle" placeholder="e.g., Week 5 Lecture">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">QR Code Validity</label>
+                                    <select class="form-select" id="qrDuration">
+                                        <option value="5">5 minutes</option>
+                                        <option value="10">10 minutes</option>
+                                        <option value="15" selected>15 minutes</option>
+                                        <option value="30">30 minutes</option>
+                                        <option value="60">1 hour</option>
+                                        <option value="120">2 hours</option>
+                                    </select>
+                                </div>
+
+                                <!-- ── GPS LOCK PANEL ── -->
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="gpsRequiredToggle" onchange="toggleGpsFields()">
+                                        <label class="form-check-label fw-semibold" for="gpsRequiredToggle">
+                                            <i class="fas fa-map-marker-alt text-success me-1"></i>
+                                            Enable GPS Location Lock
+                                        </label>
+                                    </div>
+                                    <div class="form-text">Students outside the allowed radius will be blocked from marking attendance.</div>
+                                </div>
+
+                                <div id="gpsFields" style="display:none;">
+                                    <div class="gps-panel mb-3">
+                                        <p class="mb-2 small fw-bold text-success">
+                                            <i class="fas fa-map-pin me-1"></i>Classroom GPS Coordinates
+                                        </p>
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-6">
+                                                <label class="form-label small">Latitude</label>
+                                                <input type="number" step="any" class="form-control form-control-sm" id="gpsLat" placeholder="e.g., 12.0034">
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label small">Longitude</label>
+                                                <input type="number" step="any" class="form-control form-control-sm" id="gpsLng" placeholder="e.g., 8.5920">
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-success btn-sm w-100 mb-2" id="captureLocationBtn" onclick="captureMyLocation()">
+                                            <i class="fas fa-crosshairs me-1"></i>Use My Current Location
+                                        </button>
+                                        <div id="gpsStatus" class="small"></div>
+
+                                        <label class="form-label small mt-2 fw-bold">Allowed Radius (metres)</label>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <input type="range" class="form-range" id="gpsRadius" min="20" max="500" value="100"
+                                                oninput="document.getElementById('gpsRadiusVal').textContent = this.value + 'm'">
+                                            <span class="badge bg-success" id="gpsRadiusVal" style="min-width:55px;">100m</span>
+                                        </div>
+                                        <div class="form-text">Recommended: 50–100m for indoor classrooms.</div>
+                                    </div>
+                                </div>
+                                <!-- ── END GPS PANEL ── -->
+
+                                <!-- ── ROTATING QR INFO ── -->
+                                <div class="alert alert-secondary py-2 mb-3 d-flex align-items-start gap-2">
+                                    <i class="fas fa-sync-alt mt-1 text-primary"></i>
+                                    <span class="small"><strong>Anti-screenshot protection is always ON.</strong>
+                                        The QR code rotates every 10 seconds. Screenshots and forwarded images become invalid instantly.</span>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-qrcode me-2"></i>Generate QR Code
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-7">
+                    <div class="page-card">
+                        <div class="page-card-header">
+                            <h5><i class="fas fa-qrcode me-2"></i>Live QR Code</h5>
+                            <span class="badge bg-warning text-dark" id="rotatingBadge" style="display:none;">
+                                <i class="fas fa-sync-alt me-1"></i>Auto-rotating
+                            </span>
+                        </div>
+                        <div class="page-card-body qr-display" id="qrCodeDisplay">
+                            <div class="text-muted py-3">
+                                <i class="fas fa-qrcode fa-5x mb-3 opacity-25"></i>
+                                <p>Configure settings on the left and click "Generate QR Code".</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lecturer: View Attendance ── extra Distance column ── -->
+        <div id="viewAttendancePage" class="page">
+            <h4 class="mb-4">View Attendance</h4>
+            <div class="page-card">
+                <div class="page-card-header"><h5><i class="fas fa-filter me-2"></i>Filter</h5></div>
+                <div class="page-card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label">Course</label>
+                            <select class="form-select" id="attendanceCourseFilter" onchange="loadCourseSessions()">
+                                <option value="">-- Select Course --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Session <small class="text-muted">(📍 = GPS Lock)</small></label>
+                            <select class="form-select" id="attendanceSessionFilter" onchange="loadSessionAttendance()">
+                                <option value="">-- Select Session --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button class="btn btn-outline-primary w-100" onclick="exportAttendance()">
+                                <i class="fas fa-download me-2"></i>Export</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-card mt-4">
+                <div class="page-card-header">
+                    <h5><i class="fas fa-list me-2"></i>Attendance List</h5>
+                    <span class="badge bg-primary" id="attendanceCount">0 students</span>
+                </div>
+                <div class="page-card-body">
+                    <div class="table-container">
+                        <table class="table table-hover">
+                            <thead><tr>
+                                <th>S/N</th><th>Reg. Number</th><th>Name</th>
+                                <th>Time Marked</th>
+                                <th title="Distance from classroom at scan time">Distance</th>
+                                <th>Status</th>
+                            </tr></thead>
+                            <tbody id="sessionAttendanceTable">
+                                <tr><td colspan="6" class="text-center text-muted">Select a course and session</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lecturer: Reports -->
+        <div id="reportsPage" class="page">
+            <h4 class="mb-4">Attendance Reports</h4>
+            <div class="page-card">
+                <div class="page-card-header"><h5><i class="fas fa-book me-2"></i>Select Course</h5></div>
+                <div class="page-card-body">
+                    <select class="form-select" id="reportCourseSelect" onchange="loadCourseReport()">
+                        <option value="">-- Select Course --</option>
+                    </select>
+                </div>
+            </div>
+            <div class="page-card mt-4" id="reportCard" style="display:none;">
+                <div class="page-card-header">
+                    <h5><i class="fas fa-chart-bar me-2"></i>Attendance Summary</h5>
+                    <button class="btn btn-sm btn-outline-primary no-print" onclick="printReport()">
+                        <i class="fas fa-print me-2"></i>Print</button>
+                </div>
+                <div class="page-card-body">
+                    <div class="table-container">
+                        <table class="table table-bordered">
+                            <thead><tr><th>S/N</th><th>Reg. Number</th><th>Name</th><th>Present</th><th>Absent</th><th>%</th><th>Remark</th></tr></thead>
+                            <tbody id="reportTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile -->
+        <div id="profilePage" class="page">
+            <h4 class="mb-4">My Profile</h4>
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="page-card text-center"><div class="page-card-body">
+                        <i class="fas fa-user-circle fa-5x text-muted mb-3"></i>
+                        <h5 id="profileName">–</h5>
+                        <span class="badge bg-primary" id="profileRole">–</span>
+                    </div></div>
+                </div>
+                <div class="col-lg-8">
+                    <div class="page-card">
+                        <div class="page-card-header"><h5><i class="fas fa-info-circle me-2"></i>Account Information</h5></div>
+                        <div class="page-card-body">
+                            <table class="table table-borderless">
+                                <tr><th style="width:150px;">Email:</th><td id="profileEmail">–</td></tr>
+                                <tr><th>Reg. Number:</th><td id="profileRegNumber">–</td></tr>
+                                <tr><th>Faculty:</th><td id="profileFaculty">–</td></tr>
+                                <tr><th>Department:</th><td id="profileDepartment">–</td></tr>
+                                <tr><th>Level:</th><td id="profileLevel">–</td></tr>
+                                <tr><th>Joined:</th><td id="profileJoined">–</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin: Manage Users -->
+        <div id="manageUsersPage" class="page">
+            <h4 class="mb-4">All Users</h4>
+            <div class="page-card">
+                <div class="page-card-header">
+                    <h5><i class="fas fa-users me-2"></i>User List</h5>
+                    <select class="form-select form-select-sm" id="userRoleFilter" onchange="loadAllUsers()" style="width:auto;">
+                        <option value="">All Roles</option>
+                        <option value="student">Students</option>
+                        <option value="lecturer">Lecturers</option>
+                        <option value="admin">Admins</option>
+                    </select>
+                </div>
+                <div class="page-card-body">
+                    <div class="table-container">
+                        <table class="table table-hover">
+                            <thead><tr><th>Name</th><th>Email</th><th>Reg.</th><th>Role</th><th>Dept.</th><th>Status</th><th>Actions</th></tr></thead>
+                            <tbody id="usersTable"><tr><td colspan="7" class="text-center">Loading…</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin: Manage Lecturers -->
+        <div id="manageLecturersPage" class="page">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="mb-0">Manage Lecturers</h4>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addLecturerModal">
+                    <i class="fas fa-plus me-2"></i>Add Lecturer</button>
+            </div>
+            <div class="page-card"><div class="page-card-body">
+                <div class="table-container">
+                    <table class="table table-hover">
+                        <thead><tr><th>Name</th><th>Email</th><th>Department</th><th>Faculty</th><th>Courses</th><th>Status</th></tr></thead>
+                        <tbody id="lecturersTable"><tr><td colspan="6" class="text-center">Loading…</td></tr></tbody>
+                    </table>
+                </div>
+            </div></div>
+        </div>
+
+        <!-- Admin: Manage Courses -->
+        <div id="allCoursesPage" class="page">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="mb-0">Manage Courses</h4>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCourseModal">
+                    <i class="fas fa-plus me-2"></i>Add Course</button>
+            </div>
+            <div class="page-card"><div class="page-card-body">
+                <div class="table-container">
+                    <table class="table table-hover">
+                        <thead><tr><th>Code</th><th>Title</th><th>Lecturer</th><th>Level</th><th>Semester</th><th>Students</th><th>Actions</th></tr></thead>
+                        <tbody id="allCoursesTable"><tr><td colspan="7" class="text-center">Loading…</td></tr></tbody>
+                    </table>
+                </div>
+            </div></div>
+        </div>
+
+    </div><!-- /main-content -->
+</div><!-- /mainApp -->
+
+<!-- ══════════ MODALS ══════════ -->
+
+<!-- Add Lecturer -->
+<div class="modal fade" id="addLecturerModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="fas fa-chalkboard-teacher me-2"></i>Create Lecturer Account</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <div id="lecturerCreatedAlert" style="display:none;"></div>
+            <form id="addLecturerForm">
+                <div class="mb-3"><label class="form-label">Full Name *</label>
+                    <input type="text" class="form-control" id="lecFullName" required placeholder="e.g., Dr. Aminu Ibrahim"></div>
+                <div class="mb-3"><label class="form-label">Email Address *</label>
+                    <input type="email" class="form-control" id="lecEmail" required></div>
+                <div class="mb-3"><label class="form-label">Password *</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="lecPassword" required placeholder="Set a login password">
+                        <button class="btn btn-outline-secondary" type="button" onclick="generatePassword()">
+                            <i class="fas fa-random"></i> Generate</button>
+                    </div></div>
+                <div class="row">
+                    <div class="col-6 mb-3"><label class="form-label">Department</label>
+                        <input type="text" class="form-control" id="lecDept" placeholder="Computer Science"></div>
+                    <div class="col-6 mb-3"><label class="form-label">Faculty</label>
+                        <input type="text" class="form-control" id="lecFaculty" placeholder="Computing"></div>
+                </div>
+                <div class="mb-3"><label class="form-label">Phone (optional)</label>
+                    <input type="text" class="form-control" id="lecPhone" placeholder="+234…"></div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="addLecturer()">
+                <i class="fas fa-user-plus me-2"></i>Create Account</button>
+        </div>
+    </div></div>
+</div>
+
+<!-- Add Course -->
+<div class="modal fade" id="addCourseModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Add &amp; Assign Course</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <form id="addCourseForm">
+                <div class="mb-3"><label class="form-label">Assign to Lecturer *</label>
+                    <select class="form-select" id="courseAssignLecturer" required>
+                        <option value="">-- Select Lecturer --</option>
+                    </select></div>
+                <div class="row">
+                    <div class="col-6 mb-3"><label class="form-label">Course Code *</label>
+                        <input type="text" class="form-control" id="newCourseCode" required placeholder="CSC 401"></div>
+                    <div class="col-6 mb-3"><label class="form-label">Level</label>
+                        <select class="form-select" id="newCourseLevel">
+                            <option value="100">100</option><option value="200">200</option>
+                            <option value="300">300</option><option value="400" selected>400</option>
+                            <option value="500">500</option>
+                        </select></div>
+                </div>
+                <div class="mb-3"><label class="form-label">Course Title *</label>
+                    <input type="text" class="form-control" id="newCourseTitle" required placeholder="e.g., Software Engineering"></div>
+                <div class="row">
+                    <div class="col-6 mb-3"><label class="form-label">Department</label>
+                        <input type="text" class="form-control" id="newCourseDept" placeholder="Computer Science"></div>
+                    <div class="col-6 mb-3"><label class="form-label">Faculty</label>
+                        <input type="text" class="form-control" id="newCourseFaculty" placeholder="Computing"></div>
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-3"><label class="form-label">Semester</label>
+                        <select class="form-select" id="newCourseSemester">
+                            <option value="First Semester">First Semester</option>
+                            <option value="Second Semester">Second Semester</option>
+                        </select></div>
+                    <div class="col-6 mb-3"><label class="form-label">Academic Year</label>
+                        <input type="text" class="form-control" id="newCourseYear" placeholder="2024/2025"></div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="addCourse()">
+                <i class="fas fa-plus me-2"></i>Add Course</button>
+        </div>
+    </div></div>
+</div>
+
+<!-- Upload Students -->
+<div class="modal fade" id="uploadStudentsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg"><div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="fas fa-file-excel me-2 text-success"></i>Upload Students from Excel</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="uploadCourseId">
+            <div class="alert alert-info">
+                <strong><i class="fas fa-info-circle me-1"></i>How it works:</strong>
+                <ul class="mb-0 mt-1">
+                    <li>Prepare an Excel (.xlsx/.xls) with a <code>Reg_Number</code> column (and optionally <code>Email</code>).</li>
+                    <li>Students must have already self-registered. Unmatched students are listed as "Not Found".</li>
+                </ul>
+            </div>
+            <div class="mb-3">
+                <a href="#" onclick="downloadTemplate()" class="btn btn-outline-success btn-sm">
+                    <i class="fas fa-download me-1"></i>Download Sample Template</a>
+            </div>
+            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('excelFileInput').click()">
+                <i class="fas fa-file-excel d-block text-success"></i>
+                <p class="mb-1 fw-bold">Click to select Excel file</p>
+                <p class="text-muted small mb-0">Supports .xlsx and .xls (max 5MB)</p>
+            </div>
+            <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none;" onchange="handleFileSelected(this)">
+            <div id="selectedFileInfo" class="mt-2" style="display:none;">
+                <span class="badge bg-success"><i class="fas fa-file me-1"></i><span id="selectedFileName"></span></span>
+            </div>
+            <div id="uploadResults" class="mt-3" style="display:none;">
+                <h6>Upload Results</h6>
+                <div class="row text-center">
+                    <div class="col-3"><div class="p-2 bg-light rounded"><div class="fw-bold text-primary fs-4" id="resTotal">0</div><small>Total Rows</small></div></div>
+                    <div class="col-3"><div class="p-2 bg-light rounded"><div class="fw-bold text-success fs-4" id="resEnrolled">0</div><small>Enrolled</small></div></div>
+                    <div class="col-3"><div class="p-2 bg-light rounded"><div class="fw-bold text-warning fs-4" id="resAlready">0</div><small>Already Enrolled</small></div></div>
+                    <div class="col-3"><div class="p-2 bg-light rounded"><div class="fw-bold text-danger fs-4" id="resNotFound">0</div><small>Not Found</small></div></div>
+                </div>
+                <div id="uploadErrors" class="mt-3" style="display:none;">
+                    <h6 class="text-danger">Issues:</h6>
+                    <ul id="uploadErrorList" class="small text-danger"></ul>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-success" id="uploadBtn" onclick="uploadStudents()" disabled>
+                <i class="fas fa-upload me-2"></i>Upload &amp; Enrol Students</button>
+        </div>
+    </div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
