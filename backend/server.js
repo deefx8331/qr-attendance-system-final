@@ -11,6 +11,22 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'buk_qr_attendance_secret_key_2024';
 
+// ==================== UTILITY FUNCTIONS ====================
+function getDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371e3; // Earth's radius in meters
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lng2 - lng1) * Math.PI / 180;
+
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  return R * c;
+}
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../frontend')));
@@ -266,7 +282,7 @@ app.get('/api/sessions/:id/token', authenticateToken, requireRole('lecturer', 'a
 
 // ==================== ATTENDANCE ROUTES ====================
 app.post('/api/attendance/mark', authenticateToken, (req, res) => {
-  const { session_id, student_id, course_id, token } = req.body;
+  const { session_id, student_id, course_id, token, student_lat, student_lng } = req.body;
 
   db.get(
     `SELECT * FROM attendance_sessions WHERE id = ? AND current_token = ?`,
@@ -278,13 +294,46 @@ app.post('/api/attendance/mark', authenticateToken, (req, res) => {
         return res.status(400).json({ error: 'Session expired' });
       }
 
+      // Check GPS requirements
+      if (session.gps_required) {
+        if (!student_lat || !student_lng) {
+          return res.status(400).json({ 
+            error: 'GPS location required for this session', 
+            code: 'GPS_REQUIRED' 
+          });
+        }
+
+        // Calculate distance from classroom
+        const distance = getDistance(
+          parseFloat(student_lat), parseFloat(student_lng),
+          parseFloat(session.gps_lat), parseFloat(session.gps_lng)
+        );
+
+        if (distance > session.gps_radius_metres) {
+          return res.status(400).json({ 
+            error: 'You are too far from the classroom', 
+            code: 'OUT_OF_RANGE',
+            distance_metres: Math.round(distance),
+            allowed_metres: session.gps_radius_metres
+          });
+        }
+      }
+
       db.run(
-        `INSERT INTO attendance_records (session_id, student_id, course_id, marked_at)
-         VALUES (?, ?, ?, datetime('now'))`,
-        [session_id, student_id, course_id],
+        `INSERT INTO attendance_records (session_id, student_id, course_id, marked_at, student_lat, student_lng, distance_metres, gps_verified)
+         VALUES (?, ?, ?, datetime('now'), ?, ?, ?, ?)`,
+        [session_id, student_id, course_id, student_lat, student_lng, 
+         session.gps_required ? Math.round(getDistance(parseFloat(student_lat), parseFloat(student_lng), parseFloat(session.gps_lat), parseFloat(session.gps_lng))) : null,
+         session.gps_required ? 1 : 0],
         function(err) {
           if (err) return res.status(400).json({ error: 'Attendance already marked or invalid data' });
-          res.json({ success: true, message: 'Attendance marked successfully', id: this.lastID });
+          const distance = session.gps_required ? Math.round(getDistance(parseFloat(student_lat), parseFloat(student_lng), parseFloat(session.gps_lat), parseFloat(session.gps_lng))) : null;
+          res.json({ 
+            success: true, 
+            message: 'Attendance marked successfully', 
+            id: this.lastID,
+            distance_metres: distance
+          });
         }
       );
     }

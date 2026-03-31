@@ -4,7 +4,10 @@
 // Features: GPS Location Lock + Rotating QR Anti-Sharing
 // ============================================================
 
-const API_URL = 'https://qr-attendance-system-final.vercel.app/api';
+// Dynamic API URL - works locally and on Vercel
+const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:3000/api' 
+    : 'https://qr-attendance-system-final.vercel.app/api';
 let currentUser        = null;
 let authToken          = null;
 let html5QrCode        = null;
@@ -264,7 +267,8 @@ async function onScanSuccess(decodedText) {
     try {
         const res  = await apiFetch('/attendance/mark', 'POST', {
             session_id:   qrData.session_id,
-            session_code: qrData.session_code,
+            course_id:    qrData.course_id,
+            student_id:   currentUser.id,
             token:        qrData.token,
             student_lat,
             student_lng
@@ -407,11 +411,23 @@ function captureMyLocation() {
             btn.innerHTML = '<i class="fas fa-crosshairs me-1"></i>Re-capture Location';
         },
         err => {
-            statusEl.innerHTML = `<span class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>${err.message}</span>`;
+            let errorMsg = 'Location unavailable';
+            switch(err.code) {
+                case err.PERMISSION_DENIED:
+                    errorMsg = 'Location access denied. Please allow location access in your browser.';
+                    break;
+                case err.POSITION_UNAVAILABLE:
+                    errorMsg = 'Location unavailable. Try moving to an open area.';
+                    break;
+                case err.TIMEOUT:
+                    errorMsg = 'Location request timed out. Please try again.';
+                    break;
+            }
+            statusEl.innerHTML = `<span class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>${errorMsg}</span>`;
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-crosshairs me-1"></i>Use My Current Location';
         },
-        { enableHighAccuracy: true, timeout: 10000 }
+        { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
     );
 }
 
@@ -448,17 +464,17 @@ async function handleGenerateQR(e) {
         const payload = {
             course_id:         courseId,
             session_title:     sessionTitle || `Session ${new Date().toLocaleDateString()}`,
-            duration_minutes:  parseInt(duration),
+            expires_in_minutes: parseInt(duration),
             gps_required:      gpsRequired,
-            gps_lat:           gpsRequired ? parseFloat(gpsLat) : undefined,
-            gps_lng:           gpsRequired ? parseFloat(gpsLng) : undefined,
-            gps_radius_metres: gpsRequired ? parseInt(gpsRadius) : undefined
+            gps_lat:           gpsRequired ? parseFloat(gpsLat) : null,
+            gps_lng:           gpsRequired ? parseFloat(gpsLng) : null,
+            gps_radius_metres: gpsRequired ? parseInt(gpsRadius) : null
         };
         const res  = await apiFetch('/sessions', 'POST', payload);
         const data = await res.json();
 
         if (res.ok) {
-            startRotatingQRDisplay(data.session);
+            startRotatingQRDisplay(data);
         } else {
             display.innerHTML = `<div class="text-center text-danger py-4"><i class="fas fa-times-circle fa-3x mb-2"></i><p>${data.error}</p></div>`;
         }
