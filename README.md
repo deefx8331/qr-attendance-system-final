@@ -1,7 +1,45 @@
 # QR Code Attendance Management System
 ## Bayero University Kano
 
-A web-based attendance management system that uses QR code technology to streamline student attendance tracking.
+---
+
+## 🚀 Free Hosting Deployment
+
+### Quick Deploy Options
+
+#### Option 1: Railway + PlanetScale + Netlify (Recommended)
+**Cost:** Completely FREE
+**Setup Time:** 30-45 minutes
+
+1. **Database (PlanetScale)**
+   - Go to [PlanetScale](https://planetscale.com)
+   - Create account → New Database → Import from URL
+   - Use: `https://raw.githubusercontent.com/yourusername/qr-attendance-system/main/database/schema.sql`
+   - Copy database URL for later
+
+2. **Backend (Railway)**
+   - Go to [Railway.app](https://railway.app)
+   - Connect GitHub → Deploy from repo
+   - Add environment variables:
+     ```
+     DB_HOST=your-planetscale-host
+     DB_USER=your-planetscale-user
+     DB_PASSWORD=your-planetscale-password
+     DB_NAME=qr_attendance_db
+     JWT_SECRET=your-random-secret-key
+     CORS_ORIGIN=https://your-netlify-domain.netlify.app
+     ```
+
+3. **Frontend (Netlify)**
+   - Go to [Netlify](https://netlify.com)
+   - Drag & drop `frontend/` folder or connect GitHub
+   - Update `API_URL` in `app.js` to your Railway backend URL
+
+#### Option 2: Render + Railway Database
+**Cost:** FREE (with limits)
+- Backend: Render (750 hours/month free)
+- Database: Railway included database
+- Frontend: Netlify (free)
 
 ---
 

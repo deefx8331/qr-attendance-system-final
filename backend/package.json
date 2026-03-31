@@ -10,6 +10,9 @@
   "keywords": ["qr-code", "attendance", "university", "education"],
   "author": "BUK Student",
   "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
   "dependencies": {
     "express": "^4.18.2",
     "mysql2": "^3.6.5",
