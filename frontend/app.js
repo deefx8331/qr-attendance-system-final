@@ -4,7 +4,7 @@
 // Features: GPS Location Lock + Rotating QR Anti-Sharing
 // ============================================================
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'https://qr-attendance-system-final.vercel.app/api';
 let currentUser        = null;
 let authToken          = null;
 let html5QrCode        = null;
