@@ -434,12 +434,26 @@ function captureMyLocation() {
 // ==================== GENERATE QR + ROTATING DISPLAY ====================
 async function loadCourseSelectOptions() {
     const select = document.getElementById('qrCourseSelect');
+    console.log('Loading courses for user:', currentUser);
     try {
         const courses = await (await apiFetch('/courses')).json();
+        console.log('All courses from API:', courses);
         select.innerHTML = '<option value="">-- Select Course --</option>';
-        if (Array.isArray(courses))
-            courses.forEach(c => { select.innerHTML += `<option value="${c.id}">${c.course_code} – ${c.course_title}</option>`; });
-    } catch {}
+        if (Array.isArray(courses)) {
+            // Filter courses by current lecturer if user is a lecturer
+            const filteredCourses = currentUser.role === 'lecturer' 
+                ? courses.filter(c => c.lecturer_id === currentUser.id)
+                : courses;
+            console.log('Filtered courses:', filteredCourses);
+            filteredCourses.forEach(c => { 
+                select.innerHTML += `<option value="${c.id}">${c.course_code} – ${c.course_title}</option>`; 
+            });
+            console.log('Courses added to select, final HTML:', select.innerHTML);
+        }
+    } catch (error) {
+        console.error('Error loading courses:', error);
+        select.innerHTML = '<option value="">Error loading courses</option>';
+    }
 }
 
 async function handleGenerateQR(e) {

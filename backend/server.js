@@ -140,6 +140,12 @@ db.serialize(() => {
   db.run(`INSERT OR IGNORE INTO enrollments (course_id, student_id) VALUES (1, 4)`);
   db.run(`INSERT OR IGNORE INTO enrollments (course_id, student_id) VALUES (1, 5)`);
   db.run(`INSERT OR IGNORE INTO enrollments (course_id, student_id) VALUES (2, 4)`);
+
+  // Start server after database is initialized
+  app.listen(PORT, () => {
+    console.log(`QR Attendance Server running on http://localhost:${PORT}`);
+    console.log('Database initialized with sample data');
+  });
 });
 
 // ==================== AUTH ROUTES ====================
@@ -396,9 +402,4 @@ app.get('/api/health', (req, res) => {
 // Root
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/index.html'));
-});
-
-// Start server
-app.listen(PORT, () => {
-  console.log(`QR Attendance Server running on http://localhost:${PORT}`);
 });
